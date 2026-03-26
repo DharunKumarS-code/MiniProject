@@ -26,6 +26,10 @@ class DropoutPredictor:
 
 model = DropoutPredictor()
 
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({'status': 'ML API is running', 'endpoint': '/predict (POST)'})
+
 @app.route('/predict', methods=['POST'])
 def predict_dropout():
     try:

@@ -3,9 +3,9 @@ import { Brain, FileText, CheckSquare, GraduationCap, Upload, Download, Wand2 } 
 
 export const AIFeatures = () => {
   const [activeTab, setActiveTab] = useState('lesson-plan');
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const LessonPlanGenerator = () => {
+    const [isGenerating, setIsGenerating] = useState(false);
     const [formData, setFormData] = useState({
       subject: '',
       topic: '',
@@ -164,6 +164,7 @@ export const AIFeatures = () => {
   };
 
   const HomeworkGenerator = () => {
+    const [isGenerating, setIsGenerating] = useState(false);
     const [hwFormData, setHwFormData] = useState({
       subject: '',
       chapter: '',
