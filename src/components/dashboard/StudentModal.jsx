@@ -1,7 +1,26 @@
-import React from 'react';
-import { X, Clock, BookOpen, DollarSign, AlertTriangle, TrendingDown, Mail, Phone, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Clock, BookOpen, DollarSign, AlertTriangle, TrendingDown, Mail, Phone, User, Brain } from 'lucide-react';
+import { predictStudentRisk } from '../../services/mlService';
 
 export const StudentModal = ({ student, onClose }) => {
+  const [mlPrediction, setMlPrediction] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const getPrediction = async () => {
+      try {
+        const prediction = await predictStudentRisk(student);
+        setMlPrediction(prediction);
+      } catch (error) {
+        console.error('ML prediction failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    getPrediction();
+  }, [student]);
+  
   const getRiskColor = (level) => {
     switch (level) {
       case 'high': return 'text-red-600 bg-red-50';
@@ -157,11 +176,59 @@ export const StudentModal = ({ student, onClose }) => {
             </div>*/}
 
             <div className="mt-6 bg-blue-50 border border-blue-200 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">ML Prediction</h4>
-              <p className="text-sm text-blue-800">
-                Based on historical data, there's a {student.riskLevel === 'high' ? '78%' : student.riskLevel === 'medium' ? '45%' : '12%'} 
-                probability that this student may need additional support within the next 30 days.
-              </p>
+              <div className="flex items-center space-x-2 mb-3">
+                <Brain className="h-5 w-5 text-blue-600" />
+                <h4 className="font-medium text-blue-900">AI Dropout Risk Assessment</h4>
+                {mlPrediction && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                    {mlPrediction.confidence}% confidence
+                  </span>
+                )}
+              </div>
+              
+              {loading ? (
+                <div className="flex items-center space-x-2 text-blue-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-sm">Analyzing student data...</span>
+                </div>
+              ) : mlPrediction ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-800">Dropout Risk Score:</span>
+                    <span className="font-semibold text-blue-900">{mlPrediction.riskProbability}%</span>
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${
+                        mlPrediction.riskProbability > 70 ? 'bg-red-500' : 
+                        mlPrediction.riskProbability > 40 ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}
+                      style={{ width: `${mlPrediction.riskProbability}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-sm text-blue-800">
+                    <strong>Recommendation:</strong> {mlPrediction.recommendation}
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    <strong>Intervention Timeframe:</strong> {mlPrediction.timeframe}
+                  </p>
+                  {mlPrediction.factors.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-xs text-blue-700 mb-1"><strong>Key Factors:</strong></p>
+                      <ul className="text-xs text-blue-600 space-y-1">
+                        {mlPrediction.factors.map((factor, index) => (
+                          <li key={index} className="flex items-start space-x-1">
+                            <span className="w-1 h-1 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></span>
+                            <span>{factor}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-blue-700">Unable to generate prediction. Please try again.</p>
+              )}
             </div>
           </div>
         </div>

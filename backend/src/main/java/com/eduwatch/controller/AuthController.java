@@ -1,7 +1,9 @@
 package com.eduwatch.controller;
 
-import com.eduwatch.model.User;
-import com.eduwatch.repository.UserRepository;
+import com.eduwatch.model.RegisterUser;
+import com.eduwatch.model.LoginUser;
+import com.eduwatch.repository.RegisterUserRepository;
+import com.eduwatch.repository.LoginUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,7 +17,10 @@ import java.util.HashMap;
 public class AuthController {
     
     @Autowired
-    private UserRepository userRepository;
+    private RegisterUserRepository registerUserRepository;
+    
+    @Autowired
+    private LoginUserRepository loginUserRepository;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -25,16 +30,14 @@ public class AuthController {
         String email = credentials.get("email");
         String password = credentials.get("password");
         
-        return userRepository.findByEmail(email)
+        return loginUserRepository.findByEmail(email)
                 .filter(user -> passwordEncoder.matches(password, user.getPassword()))
                 .map(user -> {
                     Map<String, Object> response = new HashMap<>();
                     response.put("success", true);
                     response.put("user", Map.of(
                         "id", user.getId(),
-                        "email", user.getEmail(),
-                        "name", user.getName(),
-                        "role", user.getRole()
+                        "email", user.getEmail()
                     ));
                     return ResponseEntity.ok(response);
                 })
@@ -42,13 +45,20 @@ public class AuthController {
     }
     
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody User user) {
-        if (userRepository.existsByEmail(user.getEmail())) {
+    public ResponseEntity<Map<String, Object>> register(@RequestBody RegisterUser user) {
+        if (registerUserRepository.existsByEmail(user.getEmail())) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email already exists"));
         }
         
+        // Save to register_users collection
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        User savedUser = userRepository.save(user);
+        RegisterUser savedUser = registerUserRepository.save(user);
+        
+        // Also save email and password to login_users collection
+        LoginUser loginUser = new LoginUser();
+        loginUser.setEmail(savedUser.getEmail());
+        loginUser.setPassword(savedUser.getPassword());
+        loginUserRepository.save(loginUser);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

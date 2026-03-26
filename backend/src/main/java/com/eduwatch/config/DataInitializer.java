@@ -2,14 +2,18 @@ package com.eduwatch.config;
 
 import com.eduwatch.model.User;
 import com.eduwatch.model.Student;
+import com.eduwatch.model.RegisterUser;
+import com.eduwatch.model.LoginUser;
 import com.eduwatch.repository.UserRepository;
 import com.eduwatch.repository.StudentRepository;
+import com.eduwatch.repository.RegisterUserRepository;
+import com.eduwatch.repository.LoginUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-@Component
+// @Component - SSL ISSUES
 public class DataInitializer implements CommandLineRunner {
     
     @Autowired
@@ -17,6 +21,12 @@ public class DataInitializer implements CommandLineRunner {
     
     @Autowired
     private StudentRepository studentRepository;
+    
+    @Autowired
+    private RegisterUserRepository registerUserRepository;
+    
+    @Autowired
+    private LoginUserRepository loginUserRepository;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -40,6 +50,36 @@ public class DataInitializer implements CommandLineRunner {
             teacher.setName("John Doe");
             teacher.setRole(User.Role.TEACHER);
             userRepository.save(teacher);
+        }
+        
+        // Create RegisterUser data
+        if (registerUserRepository.count() == 0) {
+            RegisterUser regAdmin = new RegisterUser();
+            regAdmin.setName("Admin User");
+            regAdmin.setEmail("admin@school.edu");
+            regAdmin.setPassword(passwordEncoder.encode("admin123"));
+            regAdmin.setRole("ADMIN");
+            registerUserRepository.save(regAdmin);
+            
+            RegisterUser regTeacher = new RegisterUser();
+            regTeacher.setName("John Doe");
+            regTeacher.setEmail("john.doe@school.edu");
+            regTeacher.setPassword(passwordEncoder.encode("teacher123"));
+            regTeacher.setRole("TEACHER");
+            registerUserRepository.save(regTeacher);
+        }
+        
+        // Create LoginUser data
+        if (loginUserRepository.count() == 0) {
+            LoginUser loginAdmin = new LoginUser();
+            loginAdmin.setEmail("admin@school.edu");
+            loginAdmin.setPassword(passwordEncoder.encode("admin123"));
+            loginUserRepository.save(loginAdmin);
+            
+            LoginUser loginTeacher = new LoginUser();
+            loginTeacher.setEmail("john.doe@school.edu");
+            loginTeacher.setPassword(passwordEncoder.encode("teacher123"));
+            loginUserRepository.save(loginTeacher);
         }
         
         // Create sample students

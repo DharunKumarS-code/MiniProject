@@ -1,2 +1,7 @@
+com\eduwatch\repository\LoginUserRepository.class
+com\eduwatch\model\RegisterUser.class
 com\eduwatch\service\UserService.class
+com\eduwatch\controller\TestController.class
+com\eduwatch\model\LoginUser.class
+com\eduwatch\repository\RegisterUserRepository.class
 com\eduwatch\controller\UserController.class

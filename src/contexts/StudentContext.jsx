@@ -91,21 +91,32 @@ export const StudentProvider = ({ children }) => {
         const existingStudent = studentMap.get(item.studentId);
         
         if (existingStudent) {
-          // Update existing student
-          const updatedStudent = { ...existingStudent, ...item, lastUpdated: new Date() };
+          // Update existing student - merge all fields properly
+          const updatedStudent = { 
+            ...existingStudent, 
+            ...item, 
+            id: existingStudent.id, // Keep original ID format
+            lastUpdated: new Date() 
+          };
           studentMap.set(item.studentId, calculateRiskLevel(updatedStudent));
         } else {
           // Create new student from imported data
           const newStudent = {
             id: item.studentId,
             name: item.name || `Student ${item.studentId}`,
+            rollNo: item.rollNo || '',
             grade: item.grade || '10',
             section: item.section || 'A',
+            department: item.department || '',
+            email: item.email || '',
+            contactPhone: item.contactPhone || '',
+            parentName: item.parentName || '',
+            parentEmail: item.parentEmail || '',
+            parentPhone: item.parentPhone || '',
+            address: item.address || '',
             attendance: item.attendance || 100,
             avgScore: item.avgScore || 85,
             feesStatus: item.feesStatus || 'paid',
-            contactEmail: item.contactEmail || '',
-            contactPhone: item.contactPhone || '',
             lastUpdated: new Date()
           };
           studentMap.set(item.studentId, calculateRiskLevel(newStudent));

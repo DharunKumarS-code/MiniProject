@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EduWatch Backend Test</title>
+</head>
+<body>
+    <h1>EduWatch Backend Data Initialization</h1>
+    
+    <button onclick="checkHealth()">Check Backend Health</button>
+    <button onclick="initData()">Initialize Sample Data</button>
+    
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+
+    <script>
+        async function checkHealth() {
+            try {
+                const response = await fetch('http://localhost:8083/api/test/health');
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<h3>Health Check:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<h3>Error:</h3>' + error.message;
+            }
+        }
+
+        async function initData() {
+            try {
+                const response = await fetch('http://localhost:8083/api/test/init-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<h3>Data Initialization:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<h3>Error:</h3>' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
