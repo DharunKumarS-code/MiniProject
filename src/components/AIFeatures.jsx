@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Brain, FileText, CheckSquare, GraduationCap, Upload, Download, Wand2 } from 'lucide-react';
+import { askGroq } from '../services/groqService';
 
 export const AIFeatures = () => {
   const [activeTab, setActiveTab] = useState('lesson-plan');
@@ -17,35 +18,41 @@ export const AIFeatures = () => {
 
     const generateLessonPlan = async () => {
       setIsGenerating(true);
-      // Simulate AI generation
-      setTimeout(() => {
-        const plan = {
+      try {
+        const prompt = `Create a detailed lesson plan for:
+Subject: ${formData.subject}
+Topic: ${formData.topic}
+Grade: ${formData.grade}
+Duration: ${formData.duration} minutes
+
+Respond ONLY with a valid JSON object in this exact format:
+{
+  "objectives": ["objective1", "objective2", "objective3"],
+  "materials": ["material1", "material2", "material3", "material4"],
+  "activities": [
+    {"time": "0-10 min", "activity": "activity name", "description": "detailed description"},
+    {"time": "10-25 min", "activity": "activity name", "description": "detailed description"},
+    {"time": "25-35 min", "activity": "activity name", "description": "detailed description"},
+    {"time": "35-40 min", "activity": "activity name", "description": "detailed description"},
+    {"time": "40-45 min", "activity": "activity name", "description": "detailed description"}
+  ],
+  "assessment": ["assessment1", "assessment2", "assessment3"],
+  "homework": "homework description"
+}`;
+        const raw = await askGroq(prompt);
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        const content = JSON.parse(jsonMatch[0]);
+        setGeneratedPlan({
           title: `${formData.subject}: ${formData.topic}`,
-          grade: formData.grade,
+          grade: `Grade ${formData.grade}`,
           duration: `${formData.duration} minutes`,
-          objectives: [
-            `Students will understand the key concepts of ${formData.topic}`,
-            `Students will be able to apply ${formData.topic} in practical scenarios`,
-            `Students will demonstrate mastery through assessment activities`
-          ],
-          materials: ['Whiteboard', 'Textbook', 'Worksheets', 'Digital presentation'],
-          activities: [
-            { time: '0-10 min', activity: 'Introduction and warm-up', description: `Brief review of previous lesson and introduction to ${formData.topic}` },
-            { time: '10-25 min', activity: 'Main instruction', description: `Detailed explanation of ${formData.topic} with examples` },
-            { time: '25-35 min', activity: 'Guided practice', description: 'Students work through problems with teacher guidance' },
-            { time: '35-40 min', activity: 'Independent practice', description: 'Students complete exercises individually' },
-            { time: '40-45 min', activity: 'Wrap-up and homework', description: 'Summary of key points and assignment of homework' }
-          ],
-          assessment: [
-            'Formative: Observation during guided practice',
-            'Summative: Exit ticket with 3 key questions',
-            'Homework: Practice problems for reinforcement'
-          ],
-          homework: `Complete exercises 1-10 on ${formData.topic} from textbook pages 45-47`
-        };
-        setGeneratedPlan(plan);
-        setIsGenerating(false);
-      }, 2000);
+          ...content
+        });
+      } catch (e) {
+        console.error('Lesson plan error:', e);
+        alert('Error: ' + e.message);
+      }
+      setIsGenerating(false);
     };
 
     return (
@@ -176,20 +183,35 @@ export const AIFeatures = () => {
 
     const generateHomework = async () => {
       setIsGenerating(true);
-      setTimeout(() => {
-        const homework = {
+      try {
+        const prompt = `Create a homework assignment for:
+Subject: ${hwFormData.subject}
+Topic: ${hwFormData.chapter}
+Difficulty: ${hwFormData.difficulty}
+Number of questions: ${hwFormData.questionCount}
+
+Respond ONLY with a valid JSON object in this exact format:
+{
+  "questions": [
+    {"type": "MCQ", "question": "question text", "options": ["A) option1", "B) option2", "C) option3", "D) option4"], "answer": "A"},
+    {"type": "Short Answer", "question": "question text", "points": 5},
+    {"type": "Essay", "question": "question text", "points": 10}
+  ]
+}
+Mix MCQ, Short Answer and Essay types. Make all questions specific to ${hwFormData.chapter} in ${hwFormData.subject}.`;
+        const raw = await askGroq(prompt);
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        const content = JSON.parse(jsonMatch[0]);
+        setGeneratedHomework({
           title: `${hwFormData.subject} - ${hwFormData.chapter} Assignment`,
           difficulty: hwFormData.difficulty,
-          questions: [
-            { type: 'MCQ', question: 'What is the primary function of chlorophyll in plants?', options: ['A) Water absorption', 'B) Photosynthesis', 'C) Root growth', 'D) Seed production'], answer: 'B' },
-            { type: 'Short Answer', question: 'Explain the process of photosynthesis in 2-3 sentences.', points: 5 },
-            { type: 'MCQ', question: 'Which organelle is responsible for photosynthesis?', options: ['A) Nucleus', 'B) Mitochondria', 'C) Chloroplast', 'D) Ribosome'], answer: 'C' },
-            { type: 'Essay', question: 'Discuss the importance of photosynthesis in the ecosystem and its impact on life on Earth.', points: 10 }
-          ]
-        };
-        setGeneratedHomework(homework);
-        setIsGenerating(false);
-      }, 1500);
+          questions: content.questions
+        });
+      } catch (e) {
+        console.error('Homework error:', e);
+        alert('Error: ' + e.message);
+      }
+      setIsGenerating(false);
     };
 
     return (
@@ -293,27 +315,69 @@ export const AIFeatures = () => {
 
   const AutoGrading = () => {
     const [uploadedFile, setUploadedFile] = useState(null);
+    const [fileContent, setFileContent] = useState('');
+    const [parsedQuestions, setParsedQuestions] = useState([]);
+    const [manualGrades, setManualGrades] = useState({});
+    const [feedback, setFeedback] = useState({});
     const [gradingResults, setGradingResults] = useState(null);
+
+    const parseQuestions = (text) => {
+      const lines = text.trim().split('\n').filter(l => l.trim());
+      // Skip header row
+      return lines.slice(1).map((line, i) => {
+        const cols = line.split(',');
+        return {
+          number: i + 1,
+          studentId: cols[0]?.trim(),
+          studentName: cols[1]?.trim(),
+          questionNo: cols[4]?.trim(),
+          question: cols[5]?.trim(),
+          answer: cols[6]?.trim() || 'No answer provided'
+        };
+      });
+    };
 
     const handleFileUpload = (e) => {
       const file = e.target.files[0];
-      if (file) {
-        setUploadedFile(file);
-        // Simulate grading process
-        setTimeout(() => {
-          setGradingResults({
-            totalQuestions: 10,
-            correctAnswers: 7,
-            score: 70,
-            feedback: [
-              { question: 1, status: 'correct', feedback: 'Excellent understanding of the concept' },
-              { question: 2, status: 'incorrect', feedback: 'Review the definition of photosynthesis' },
-              { question: 3, status: 'correct', feedback: 'Good application of knowledge' },
-              { question: 4, status: 'partial', feedback: 'Partially correct, needs more detail' }
-            ]
-          });
-        }, 2000);
-      }
+      if (!file) return;
+      setUploadedFile(file);
+      setGradingResults(null);
+      setManualGrades({});
+      setFeedback({});
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target.result;
+        setFileContent(text);
+        setParsedQuestions(parseQuestions(text));
+      };
+      reader.readAsText(file);
+    };
+
+    const handleGradeChange = (qNum, status) => {
+      setManualGrades(prev => ({ ...prev, [qNum]: status }));
+    };
+
+    const handleFeedbackChange = (qNum, text) => {
+      setFeedback(prev => ({ ...prev, [qNum]: text }));
+    };
+
+    const submitGrading = () => {
+      const total = parsedQuestions.length;
+      const correct = Object.values(manualGrades).filter(s => s === 'correct').length;
+      const partial = Object.values(manualGrades).filter(s => s === 'partial').length;
+      const score = Math.round(((correct + partial * 0.5) / total) * 100);
+      setGradingResults({
+        totalQuestions: total,
+        correctAnswers: correct,
+        partialAnswers: partial,
+        score,
+        feedback: parsedQuestions.map(q => ({
+          question: q.number,
+          answer: q.answer,
+          status: manualGrades[q.number] || 'incorrect',
+          feedback: feedback[q.number] || ''
+        }))
+      });
     };
 
     return (
@@ -321,62 +385,113 @@ export const AIFeatures = () => {
         <div className="bg-white rounded-lg p-6 shadow-sm border">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             <GraduationCap className="h-5 w-5 mr-2 text-purple-600" />
-            AI Auto Grading System
+            Manual Grading System
           </h3>
-          
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
             <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-4">Upload student answer sheets or text submissions</p>
-            <input
-              type="file"
-              onChange={handleFileUpload}
-              accept=".pdf,.jpg,.png,.txt,.docx"
-              className="hidden"
-              id="file-upload"
-            />
-            <label
-              htmlFor="file-upload"
-              className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
-            >
+            <p className="text-gray-600 mb-4">Upload student answer sheet (.csv)</p>
+            <input type="file" onChange={handleFileUpload} accept=".csv" className="hidden" id="file-upload" />
+            <label htmlFor="file-upload" className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
               Choose File
             </label>
-            {uploadedFile && (
-              <p className="mt-2 text-sm text-gray-600">Uploaded: {uploadedFile.name}</p>
-            )}
+            {uploadedFile && <p className="mt-2 text-sm text-gray-600">Uploaded: {uploadedFile.name}</p>}
           </div>
         </div>
 
+        {parsedQuestions.length > 0 && !gradingResults && (
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <h4 className="text-lg font-semibold mb-4">Grade Each Answer</h4>
+            <div className="space-y-4">
+              {parsedQuestions.map((q) => (
+                <div key={q.number} className="border rounded-lg p-4">
+                  <p className="font-medium mb-1">{q.questionNo}. {q.question}</p>
+                  <p className="text-xs text-gray-400 mb-1">Student: {q.studentName} ({q.studentId})</p>
+                  <p className="text-sm text-gray-600 mb-3">Answer: {q.answer || 'No answer provided'}</p>
+                  <div className="flex items-center gap-3 mb-2">
+                    {['correct', 'partial', 'incorrect'].map(status => (
+                      <button
+                        key={status}
+                        onClick={() => handleGradeChange(q.number, status)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          manualGrades[q.number] === status
+                            ? status === 'correct' ? 'bg-green-500 text-white border-green-500'
+                              : status === 'partial' ? 'bg-yellow-500 text-white border-yellow-500'
+                              : 'bg-red-500 text-white border-red-500'
+                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Add feedback (optional)"
+                    value={feedback[q.number] || ''}
+                    onChange={(e) => handleFeedbackChange(q.number, e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={submitGrading}
+              disabled={Object.keys(manualGrades).length !== parsedQuestions.length}
+              className="mt-4 flex items-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            >
+              <GraduationCap className="h-4 w-4" />
+              <span>Submit Grading</span>
+            </button>
+            {Object.keys(manualGrades).length !== parsedQuestions.length && (
+              <p className="text-xs text-gray-400 mt-2">Grade all {parsedQuestions.length} questions to submit</p>
+            )}
+          </div>
+        )}
+
         {gradingResults && (
           <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <h4 className="text-lg font-semibold mb-4">Grading Results</h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold">Grading Results</h4>
+              <button
+                onClick={() => { setGradingResults(null); setParsedQuestions([]); setUploadedFile(null); }}
+                className="text-sm text-blue-600 hover:underline"
+              >Grade Another</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">{gradingResults.score}%</p>
                 <p className="text-sm text-gray-600">Overall Score</p>
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <p className="text-2xl font-bold text-green-600">{gradingResults.correctAnswers}</p>
-                <p className="text-sm text-gray-600">Correct Answers</p>
+                <p className="text-sm text-gray-600">Correct</p>
+              </div>
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <p className="text-2xl font-bold text-yellow-600">{gradingResults.partialAnswers}</p>
+                <p className="text-sm text-gray-600">Partial</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-gray-600">{gradingResults.totalQuestions}</p>
-                <p className="text-sm text-gray-600">Total Questions</p>
+                <p className="text-sm text-gray-600">Total</p>
               </div>
             </div>
-
             <div className="space-y-3">
               <h5 className="font-medium">Detailed Feedback:</h5>
               {gradingResults.feedback.map((item, index) => (
                 <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
-                  <div className={`w-3 h-3 rounded-full mt-1 ${
-                    item.status === 'correct' ? 'bg-green-500' : 
-                    item.status === 'incorrect' ? 'bg-red-500' : 'bg-yellow-500'
+                  <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
+                    item.status === 'correct' ? 'bg-green-500' :
+                    item.status === 'partial' ? 'bg-yellow-500' : 'bg-red-500'
                   }`}></div>
-                  <div>
-                    <p className="font-medium">Question {item.question}</p>
-                    <p className="text-sm text-gray-600">{item.feedback}</p>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Question {item.question}</p>
+                    <p className="text-xs text-gray-500">Answer: {item.answer}</p>
+                    {item.feedback && <p className="text-sm text-gray-600 mt-1">{item.feedback}</p>}
                   </div>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    item.status === 'correct' ? 'bg-green-100 text-green-700' :
+                    item.status === 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                  }`}>{item.status}</span>
                 </div>
               ))}
             </div>
