@@ -314,70 +314,52 @@ Mix MCQ, Short Answer and Essay types. Make all questions specific to ${hwFormDa
   };
 
   const AutoGrading = () => {
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [fileContent, setFileContent] = useState('');
-    const [parsedQuestions, setParsedQuestions] = useState([]);
-    const [manualGrades, setManualGrades] = useState({});
-    const [feedback, setFeedback] = useState({});
+    const [answerKey, setAnswerKey] = useState(null);
+    const [studentAnswers, setStudentAnswers] = useState(null);
     const [gradingResults, setGradingResults] = useState(null);
 
-    const parseQuestions = (text) => {
+    const parseCSV = (text) => {
       const lines = text.trim().split('\n').filter(l => l.trim());
-      // Skip header row
-      return lines.slice(1).map((line, i) => {
+      return lines.slice(1).map(line => {
         const cols = line.split(',');
-        return {
-          number: i + 1,
-          studentId: cols[0]?.trim(),
-          studentName: cols[1]?.trim(),
-          questionNo: cols[4]?.trim(),
-          question: cols[5]?.trim(),
-          answer: cols[6]?.trim() || 'No answer provided'
-        };
+        return { questionNo: cols[0]?.trim(), answer: cols[1]?.trim() };
       });
     };
 
-    const handleFileUpload = (e) => {
+    const handleAnswerKey = (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      setUploadedFile(file);
-      setGradingResults(null);
-      setManualGrades({});
-      setFeedback({});
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        const text = ev.target.result;
-        setFileContent(text);
-        setParsedQuestions(parseQuestions(text));
-      };
+      reader.onload = (ev) => setAnswerKey({ name: file.name, data: parseCSV(ev.target.result) });
       reader.readAsText(file);
     };
 
-    const handleGradeChange = (qNum, status) => {
-      setManualGrades(prev => ({ ...prev, [qNum]: status }));
+    const handleStudentAnswers = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => setStudentAnswers({ name: file.name, data: parseCSV(ev.target.result) });
+      reader.readAsText(file);
     };
 
-    const handleFeedbackChange = (qNum, text) => {
-      setFeedback(prev => ({ ...prev, [qNum]: text }));
-    };
-
-    const submitGrading = () => {
-      const total = parsedQuestions.length;
-      const correct = Object.values(manualGrades).filter(s => s === 'correct').length;
-      const partial = Object.values(manualGrades).filter(s => s === 'partial').length;
-      const score = Math.round(((correct + partial * 0.5) / total) * 100);
-      setGradingResults({
-        totalQuestions: total,
-        correctAnswers: correct,
-        partialAnswers: partial,
-        score,
-        feedback: parsedQuestions.map(q => ({
-          question: q.number,
-          answer: q.answer,
-          status: manualGrades[q.number] || 'incorrect',
-          feedback: feedback[q.number] || ''
-        }))
+    const gradeAnswers = () => {
+      const results = answerKey.data.map((keyItem) => {
+        const studentItem = studentAnswers.data.find(s => s.questionNo === keyItem.questionNo);
+        const studentAns = studentItem?.answer?.trim().toLowerCase() || '';
+        const correctAns = keyItem.answer?.trim().toLowerCase();
+        const status = studentAns === correctAns ? 'correct' : 'incorrect';
+        return {
+          questionNo: keyItem.questionNo,
+          correctAnswer: keyItem.answer,
+          studentAnswer: studentItem?.answer || 'No answer',
+          status
+        };
       });
+
+      const correct = results.filter(r => r.status === 'correct').length;
+      const total = results.length;
+      const score = Math.round((correct / total) * 100);
+      setGradingResults({ results, correct, total, score });
     };
 
     return (
@@ -385,113 +367,78 @@ Mix MCQ, Short Answer and Essay types. Make all questions specific to ${hwFormDa
         <div className="bg-white rounded-lg p-6 shadow-sm border">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             <GraduationCap className="h-5 w-5 mr-2 text-purple-600" />
-            Manual Grading System
+            Auto Grading System
           </h3>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-4">Upload student answer sheet (.csv)</p>
-            <input type="file" onChange={handleFileUpload} accept=".csv" className="hidden" id="file-upload" />
-            <label htmlFor="file-upload" className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
-              Choose File
-            </label>
-            {uploadedFile && <p className="mt-2 text-sm text-gray-600">Uploaded: {uploadedFile.name}</p>}
-          </div>
-        </div>
 
-        {parsedQuestions.length > 0 && !gradingResults && (
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <h4 className="text-lg font-semibold mb-4">Grade Each Answer</h4>
-            <div className="space-y-4">
-              {parsedQuestions.map((q) => (
-                <div key={q.number} className="border rounded-lg p-4">
-                  <p className="font-medium mb-1">{q.questionNo}. {q.question}</p>
-                  <p className="text-xs text-gray-400 mb-1">Student: {q.studentName} ({q.studentId})</p>
-                  <p className="text-sm text-gray-600 mb-3">Answer: {q.answer || 'No answer provided'}</p>
-                  <div className="flex items-center gap-3 mb-2">
-                    {['correct', 'partial', 'incorrect'].map(status => (
-                      <button
-                        key={status}
-                        onClick={() => handleGradeChange(q.number, status)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                          manualGrades[q.number] === status
-                            ? status === 'correct' ? 'bg-green-500 text-white border-green-500'
-                              : status === 'partial' ? 'bg-yellow-500 text-white border-yellow-500'
-                              : 'bg-red-500 text-white border-red-500'
-                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Add feedback (optional)"
-                    value={feedback[q.number] || ''}
-                    onChange={(e) => handleFeedbackChange(q.number, e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-              ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
+              <Upload className="h-8 w-8 text-blue-400 mx-auto mb-2" />
+              <p className="text-sm font-medium text-gray-700 mb-1">Step 1 — Upload Answer Key</p>
+              <p className="text-xs text-gray-400 mb-3">CSV format: QuestionNo, CorrectAnswer</p>
+              <input type="file" accept=".csv" className="hidden" id="answer-key-upload" onChange={handleAnswerKey} />
+              <label htmlFor="answer-key-upload" className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+                Choose Answer Key
+              </label>
+              {answerKey && <p className="mt-2 text-xs text-green-600">✅ {answerKey.name} ({answerKey.data.length} questions)</p>}
             </div>
-            <button
-              onClick={submitGrading}
-              disabled={Object.keys(manualGrades).length !== parsedQuestions.length}
-              className="mt-4 flex items-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-            >
-              <GraduationCap className="h-4 w-4" />
-              <span>Submit Grading</span>
-            </button>
-            {Object.keys(manualGrades).length !== parsedQuestions.length && (
-              <p className="text-xs text-gray-400 mt-2">Grade all {parsedQuestions.length} questions to submit</p>
-            )}
+
+            <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center">
+              <Upload className="h-8 w-8 text-green-400 mx-auto mb-2" />
+              <p className="text-sm font-medium text-gray-700 mb-1">Step 2 — Upload Student Answers</p>
+              <p className="text-xs text-gray-400 mb-3">CSV format: QuestionNo, StudentAnswer</p>
+              <input type="file" accept=".csv" className="hidden" id="student-answer-upload" onChange={handleStudentAnswers} />
+              <label htmlFor="student-answer-upload" className="cursor-pointer bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+                Choose Student Answers
+              </label>
+              {studentAnswers && <p className="mt-2 text-xs text-green-600">✅ {studentAnswers.name} ({studentAnswers.data.length} answers)</p>}
+            </div>
           </div>
-        )}
+
+          <button
+            onClick={gradeAnswers}
+            disabled={!answerKey || !studentAnswers}
+            className="mt-6 flex items-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          >
+            <GraduationCap className="h-4 w-4" />
+            <span>Grade Now</span>
+          </button>
+        </div>
 
         {gradingResults && (
           <div className="bg-white rounded-lg p-6 shadow-sm border">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-semibold">Grading Results</h4>
-              <button
-                onClick={() => { setGradingResults(null); setParsedQuestions([]); setUploadedFile(null); }}
-                className="text-sm text-blue-600 hover:underline"
-              >Grade Another</button>
+              <button onClick={() => { setGradingResults(null); setAnswerKey(null); setStudentAnswers(null); }}
+                className="text-sm text-blue-600 hover:underline">Grade Another</button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+
+            <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">{gradingResults.score}%</p>
-                <p className="text-sm text-gray-600">Overall Score</p>
+                <p className="text-sm text-gray-600">Score</p>
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{gradingResults.correctAnswers}</p>
+                <p className="text-2xl font-bold text-green-600">{gradingResults.correct}</p>
                 <p className="text-sm text-gray-600">Correct</p>
               </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <p className="text-2xl font-bold text-yellow-600">{gradingResults.partialAnswers}</p>
-                <p className="text-sm text-gray-600">Partial</p>
-              </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-600">{gradingResults.totalQuestions}</p>
+                <p className="text-2xl font-bold text-gray-600">{gradingResults.total}</p>
                 <p className="text-sm text-gray-600">Total</p>
               </div>
             </div>
+
             <div className="space-y-3">
-              <h5 className="font-medium">Detailed Feedback:</h5>
-              {gradingResults.feedback.map((item, index) => (
+              {gradingResults.results.map((item, index) => (
                 <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
-                  <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
-                    item.status === 'correct' ? 'bg-green-500' :
-                    item.status === 'partial' ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}></div>
+                  <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${item.status === 'correct' ? 'bg-green-500' : 'bg-red-500'}`}></div>
                   <div className="flex-1">
-                    <p className="font-medium text-sm">Question {item.question}</p>
-                    <p className="text-xs text-gray-500">Answer: {item.answer}</p>
-                    {item.feedback && <p className="text-sm text-gray-600 mt-1">{item.feedback}</p>}
+                    <p className="font-medium text-sm">{item.questionNo}</p>
+                    <p className="text-xs text-gray-500">Correct: {item.correctAnswer}</p>
+                    <p className="text-xs text-gray-500">Student: {item.studentAnswer}</p>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    item.status === 'correct' ? 'bg-green-100 text-green-700' :
-                    item.status === 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                  }`}>{item.status}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${item.status === 'correct' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {item.status}
+                  </span>
                 </div>
               ))}
             </div>

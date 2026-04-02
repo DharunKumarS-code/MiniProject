@@ -31,28 +31,79 @@ export const Reports = () => {
     .map(([factor, count]) => ({ factor, count, percentage: Math.round((count / totalStudents) * 100) }));
 
   const generateReport = (type, period) => {
-    const reportData = {
-      type,
-      period,
-      generatedAt: new Date().toISOString(),
-      data: 'Sample report data would go here'
-    };
-    
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+    let csvContent = '';
+    const date = new Date().toLocaleDateString();
+
+    if (type === 'summary') {
+      csvContent = `EduWatch - Risk Assessment Summary\nGenerated: ${date}\nPeriod: ${period}\n\n`;
+      csvContent += `Total Students,${totalStudents}\nHigh Risk,${highRiskStudents}\nMedium Risk,${mediumRiskStudents}\nLow Risk,${lowRiskStudents}\nAverage Attendance,${avgAttendance}%\nAverage Score,${avgScore}%\n\n`;
+      csvContent += `Student ID,Name,Grade,Section,Attendance,Avg Score,Fees Status,Risk Level\n`;
+      students.forEach(s => {
+        csvContent += `${s.id},${s.name},${s.grade},${s.section},${s.attendance}%,${s.avgScore}%,${s.feesStatus},${s.riskLevel}\n`;
+      });
+    } else if (type === 'detailed') {
+      csvContent = `EduWatch - Detailed Student Analysis\nGenerated: ${date}\n\n`;
+      csvContent += `Student ID,Name,Grade,Section,Attendance,Avg Score,Fees Status,Risk Level,Risk Factors\n`;
+      students.forEach(s => {
+        csvContent += `${s.id},${s.name},${s.grade},${s.section},${s.attendance}%,${s.avgScore}%,${s.feesStatus},${s.riskLevel},"${(s.riskFactors || []).join('; ')}"\n`;
+      });
+    } else if (type === 'trends') {
+      csvContent = `EduWatch - Attendance Trend Report\nGenerated: ${date}\n\n`;
+      csvContent += `Student ID,Name,Grade,Attendance %,Status\n`;
+      students.forEach(s => {
+        const status = s.attendance < 75 ? 'Critical' : s.attendance < 85 ? 'Warning' : 'Good';
+        csvContent += `${s.id},${s.name},${s.grade},${s.attendance}%,${status}\n`;
+      });
+    } else if (type === 'interventions') {
+      csvContent = `EduWatch - High Risk Students Report\nGenerated: ${date}\n\n`;
+      csvContent += `Student ID,Name,Grade,Section,Attendance,Avg Score,Fees Status,Risk Factors\n`;
+      students.filter(s => s.riskLevel === 'high').forEach(s => {
+        csvContent += `${s.id},${s.name},${s.grade},${s.section},${s.attendance}%,${s.avgScore}%,${s.feesStatus},"${(s.riskFactors || []).join('; ')}"\n`;
+      });
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${type}_report_${period}_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `${type}_report_${period}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
 
   const downloadReport = (report) => {
-    const blob = new Blob(['Sample report content'], { type: 'text/plain' });
+    let csvContent = `EduWatch - ${report.title}\nGenerated: ${new Date().toLocaleDateString()}\n\n`;
+
+    if (report.type === 'summary') {
+      csvContent += `Total Students,${totalStudents}\nHigh Risk,${highRiskStudents}\nMedium Risk,${mediumRiskStudents}\nLow Risk,${lowRiskStudents}\nAverage Attendance,${avgAttendance}%\nAverage Score,${avgScore}%\n\n`;
+      csvContent += `Student ID,Name,Grade,Section,Attendance,Avg Score,Fees Status,Risk Level\n`;
+      students.forEach(s => {
+        csvContent += `${s.id},${s.name},${s.grade},${s.section},${s.attendance}%,${s.avgScore}%,${s.feesStatus},${s.riskLevel}\n`;
+      });
+    } else if (report.type === 'high-risk') {
+      csvContent += `Student ID,Name,Grade,Section,Attendance,Avg Score,Fees Status,Risk Factors\n`;
+      students.filter(s => s.riskLevel === 'high').forEach(s => {
+        csvContent += `${s.id},${s.name},${s.grade},${s.section},${s.attendance}%,${s.avgScore}%,${s.feesStatus},"${(s.riskFactors || []).join('; ')}"\n`;
+      });
+    } else if (report.type === 'attendance') {
+      csvContent += `Student ID,Name,Grade,Attendance %,Status\n`;
+      students.forEach(s => {
+        const status = s.attendance < 75 ? 'Critical' : s.attendance < 85 ? 'Warning' : 'Good';
+        csvContent += `${s.id},${s.name},${s.grade},${s.attendance}%,${status}\n`;
+      });
+    } else if (report.type === 'academic') {
+      csvContent += `Student ID,Name,Grade,Avg Score,Fees Status,Performance\n`;
+      students.forEach(s => {
+        const perf = s.avgScore < 60 ? 'Poor' : s.avgScore < 75 ? 'Average' : 'Good';
+        csvContent += `${s.id},${s.name},${s.grade},${s.avgScore}%,${s.feesStatus},${perf}\n`;
+      });
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${report.title.replace(/\s+/g, '_')}.txt`;
+    a.download = `${report.title.replace(/\s+/g, '_')}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
