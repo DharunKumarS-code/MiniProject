@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Upload, Settings, FileText, Brain, Shield } from 'lucide-react';
+import { BarChart3, Upload, Settings, FileText, Brain, Shield, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Navigation = ({ activeTab, onTabChange }) => {
@@ -10,6 +10,7 @@ export const Navigation = ({ activeTab, onTabChange }) => {
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'import', label: 'Data Import', icon: Upload },
     { id: 'ai-features', label: 'AI Features', icon: Brain },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -18,6 +19,7 @@ export const Navigation = ({ activeTab, onTabChange }) => {
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'import', label: 'Data Import', icon: Upload },
     { id: 'ai-features', label: 'AI Features', icon: Brain },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

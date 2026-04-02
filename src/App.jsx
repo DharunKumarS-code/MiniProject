@@ -9,6 +9,7 @@ import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AIFeatures } from './components/AIFeatures';
+import { AdvancedAnalytics } from './components/AdvancedAnalytics';
 import { StudentProvider } from './contexts/StudentContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -21,35 +22,24 @@ const AppContent = () => {
   const renderContent = () => {
     if (isAdmin) {
       switch (activeTab) {
-        case 'admin':
-          return <AdminDashboard />;
-        case 'dashboard':
-          return <Dashboard />;
-        case 'import':
-          return <DataImport />;
-        case 'ai-features':
-          return <AIFeatures />;
-        case 'reports':
-          return <Reports />;
-        case 'settings':
-          return <Settings />;
-        default:
-          return <AdminDashboard />;
+        case 'admin': return <AdminDashboard />;
+        case 'dashboard': return <Dashboard />;
+        case 'import': return <DataImport />;
+        case 'ai-features': return <AIFeatures />;
+        case 'analytics': return <AdvancedAnalytics />;
+        case 'reports': return <Reports />;
+        case 'settings': return <Settings />;
+        default: return <AdminDashboard />;
       }
     } else {
       switch (activeTab) {
-        case 'dashboard':
-          return <Dashboard />;
-        case 'import':
-          return <DataImport />;
-        case 'ai-features':
-          return <AIFeatures />;
-        case 'reports':
-          return <Reports />;
-        case 'settings':
-          return <Settings />;
-        default:
-          return <Dashboard />;
+        case 'dashboard': return <Dashboard />;
+        case 'import': return <DataImport />;
+        case 'ai-features': return <AIFeatures />;
+        case 'analytics': return <AdvancedAnalytics />;
+        case 'reports': return <Reports />;
+        case 'settings': return <Settings />;
+        default: return <Dashboard />;
       }
     }
   };
