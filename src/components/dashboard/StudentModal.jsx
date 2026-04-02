@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, BookOpen, DollarSign, AlertTriangle, TrendingDown, Mail, Phone, User, Brain } from 'lucide-react';
+import { X, Clock, BookOpen, DollarSign, AlertTriangle, TrendingDown, Mail, Phone, User, Brain, Trash2 } from 'lucide-react';
 import { predictStudentRisk } from '../../services/mlService';
+import { useStudentContext } from '../../contexts/StudentContext';
 
 export const StudentModal = ({ student, onClose }) => {
+  const { deleteStudent } = useStudentContext();
   const [mlPrediction, setMlPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -286,6 +288,18 @@ export const StudentModal = ({ student, onClose }) => {
                 className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
               >
                 Schedule Meeting
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to remove ${student.name}? This cannot be undone.`)) {
+                    deleteStudent(student.id);
+                    onClose();
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Remove Student</span>
               </button>
               <button 
                 onClick={() => {
