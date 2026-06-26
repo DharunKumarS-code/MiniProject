@@ -56,7 +56,7 @@ const DonutChart = ({ segments, size = 160, thickness = 35 }) => {
             />
           ))
         )}
-        <text x={cx} y={cy - 6} textAnchor="middle" className="text-lg font-bold" fill="#111827" fontSize="22" fontWeight="bold">{total}</text>
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="#111827" fontSize="22" fontWeight="bold">{total}</text>
         <text x={cx} y={cy + 14} textAnchor="middle" fill="#6b7280" fontSize="11">students</text>
       </svg>
       <div className="flex flex-wrap justify-center gap-3 mt-2">
